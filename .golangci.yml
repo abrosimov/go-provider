@@ -1,0 +1,110 @@
+run:
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+  timeout: 60m
+
+issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
+
+linters-settings:
+  dupl:
+    threshold: 100
+  exhaustive:
+    default-signifies-exhaustive: false
+  funlen:
+    lines: 50
+    statements: 50
+  gci:
+    prefix: github.com/abrosimov/go-provider
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+    disabled-checks:
+      - octalLiteral
+      - paramTypeCombine
+      - sloppyReassign
+    settings:
+      hugeParam:
+        sizeThreshold: 33
+  goimports:
+    local-prefixes: github.com/abrosimov/go-provider
+
+  gocyclo:
+    min-complexity: 16
+
+  forbidigo:
+    forbid:
+      - ^println.*$
+      - ^panic*$
+      - ^fmt\.Panicf.*$
+      - ^exec\.Command(# please use exec\.CommandContext instead)?$ # Only exec.Command
+
+  govet:
+    enable-all: true
+  lll:
+    line-length: 140
+  misspell:
+    locale: UK
+  nolintlint:
+    allow-unused: false # report any unused nolint directives
+    require-explanation: true # don't require an explanation for nolint directives
+    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+    disable-default-exclusions: true
+linters:
+  # please, do not use `enable-all`: it's deprecated and will be removed soon.
+  # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
+  disable-all: false
+  enable:
+    - asasalint
+    - bodyclose
+    - dogsled
+    - dupl
+    - errcheck
+    - exhaustive
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - stylecheck
+    - mnd
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - forbidigo
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - copyloopvar
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+    - asciicheck
+    - gocognit
+    - godot
+    # - godox # Not so useful, sometimes TODO's should exist.
+    - err113
+    - prealloc
+    - sqlclosecheck
+    - testpackage
+    - testifylint
