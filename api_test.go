@@ -126,7 +126,7 @@ func (s *ProviderTestSuite) TestValueOfInterface() {
 		return nil, nil
 	})
 
-	s.Require().Error(provider.ErrInterfaceTypeIsNotAllowed, err)
+	s.Require().ErrorIs(err, provider.ErrInterfaceTypeIsNotAllowed)
 }
 
 func (s *ProviderTestSuite) TestMultiValueOfStruct() {

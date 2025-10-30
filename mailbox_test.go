@@ -26,8 +26,8 @@ func (s *ProviderTestSuite) TestMailBox() {
 	// to notify new subscriber about changed state of the object.
 	assertChannelHasIncomingMessage(s, sub2.GetChannel())
 	assertChannelHasIncomingMessage(s, sub2.GetChannel())
-	s.Require().Len(sub1.GetChannel(), 0)
-	s.Require().Len(sub2.GetChannel(), 0)
+	s.Require().Empty(sub1.GetChannel())
+	s.Require().Empty(sub2.GetChannel())
 
 	err = provider.DestroyMailBox(mbox)
 	s.Require().NoError(err)

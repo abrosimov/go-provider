@@ -6,12 +6,16 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+
+	"github.com/abrosimov/go-devtools/typesx"
 )
 
 var (
 	ErrProviderAlreadyExists           = errors.New("provider already exists")
 	ErrMultiValueProviderAlreadyExists = errors.New("multi-value provider already exists")
 	ErrTypeIsAlreadyProvided           = errors.New("type is already provided with type")
+	ErrRegistryCorrupted               = errors.New("registry corrupted")
+	ErrInvalidProviderType             = errors.New("invalid provider type")
 )
 
 var (
@@ -20,7 +24,13 @@ var (
 )
 
 func init() {
-	defaultRegistry.Store(&Registry{name: "default"})
+	defaultRegistry.Store(&Registry{
+		name:                "default",
+		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
+		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, any](),
+		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
+		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
+	})
 }
 
 type providerType string
@@ -46,10 +56,10 @@ type Registry struct {
 	//nolint:godox // silence
 	// TODO: very naive approach, need to benchmark on it's performance
 	// 	map[reflect.Type]valueProvider might be more efficient?
-	providers           sync.Map
-	multiValueProviders sync.Map
-	registeredTypes     sync.Map
-	mailboxes           sync.Map
+	providers           typesx.TypedSyncMap[reflect.Type, valueProvider]
+	multiValueProviders typesx.TypedSyncMap[reflect.Type, any]
+	registeredTypes     typesx.TypedSyncMap[reflect.Type, providerType]
+	mailboxes           typesx.TypedSyncMap[string, *Mailbox]
 	// providedTypes       []string
 }
 
@@ -58,7 +68,13 @@ type CreateGuaranteedFn[T any, V SafetyGuarantor[T]] func() *T
 type CreateMultiGuaranteedFn[T any, V SafetyGuarantor[T]] func(string) *T
 
 func NewRegistry(name string) *Registry {
-	return &Registry{name: name}
+	return &Registry{
+		name:                name,
+		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
+		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, any](),
+		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
+		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
+	}
 }
 
 func (r *Registry) destroy() {
@@ -73,7 +89,13 @@ func (r *Registry) destroy() {
 func ResetRegistry() error {
 	defaultRegistryMtx.Lock()
 	oldRegistry := defaultRegistry.Load()
-	defaultRegistry.Store(&Registry{name: "default"})
+	defaultRegistry.Store(&Registry{
+		name:                "default",
+		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
+		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, any](),
+		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
+		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
+	})
 	defaultRegistryMtx.Unlock()
 
 	oldRegistry.destroy()
@@ -111,7 +133,7 @@ func getMailboxForType[T any]() *Mailbox {
 		mbox,
 	)
 
-	return v.(*Mailbox)
+	return v
 }
 
 func getMailboxForNamedValueOfType[T any](name string) *Mailbox {
@@ -124,7 +146,7 @@ func getMailboxForNamedValueOfType[T any](name string) *Mailbox {
 		mbox,
 	)
 
-	return v.(*Mailbox)
+	return v
 }
 
 func addMultiValueProviderToRegistry[T any](provider multipleValueProvider[T]) error {
@@ -142,7 +164,21 @@ func addMultiValueProviderToRegistry[T any](provider multipleValueProvider[T]) e
 	)
 
 	if loaded {
-		return mvpRaw.(multipleValueProvider[T]).merge(provider.(*multiValueProvider[T]))
+		mvp, ok := mvpRaw.(multipleValueProvider[T])
+		if !ok {
+			return fmt.Errorf("%w: expected multipleValueProvider[%T], got %T",
+				ErrRegistryCorrupted, *new(T), mvpRaw)
+		}
+
+		concreteProvider, ok := provider.(*multiValueProvider[T])
+		if !ok {
+			return fmt.Errorf("%w: expected *multiValueProvider[%T], got %T",
+				ErrInvalidProviderType, *new(T), provider)
+		}
+
+		if err := mvp.merge(concreteProvider); err != nil {
+			return fmt.Errorf("failed to merge multi-value providers: %w", err)
+		}
 	}
 
 	return nil

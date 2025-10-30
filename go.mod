@@ -1,6 +1,8 @@
 module github.com/abrosimov/go-provider
 
-go 1.23
+go 1.23.0
+
+toolchain go1.24.4
 
 require (
 	github.com/mattn/go-isatty v0.0.20
@@ -9,6 +11,7 @@ require (
 )
 
 require (
+	github.com/abrosimov/go-devtools v0.0.8 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

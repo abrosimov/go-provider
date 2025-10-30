@@ -1,0 +1,112 @@
+version: "2"
+run:
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bodyclose
+    - copyloopvar
+    - dogsled
+    - dupl
+    - err113
+    - exhaustive
+    - forbidigo
+    - funlen
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - goprintffuncname
+    - gosec
+    - lll
+    - misspell
+    - mnd
+    - nakedret
+    - noctx
+    - nolintlint
+    - prealloc
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - testifylint
+    - testpackage
+    - unconvert
+    - unparam
+    - whitespace
+  settings:
+    dupl:
+      threshold: 100
+    errcheck:
+      disable-default-exclusions: true
+      check-type-assertions: true
+      check-blank: false
+    exhaustive:
+      default-signifies-exhaustive: false
+    forbidigo:
+      forbid:
+        - pattern: ^println.*$
+        - pattern: ^panic*$
+        - pattern: ^fmt\.Panicf.*$
+        - pattern: ^exec\.Command(# please use exec\.CommandContext instead)?$
+    funlen:
+      lines: 50
+      statements: 50
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    gocritic:
+      disabled-checks:
+        - octalLiteral
+        - paramTypeCombine
+        - sloppyReassign
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+      settings:
+        hugeParam:
+          sizeThreshold: 33
+    gocyclo:
+      min-complexity: 16
+    govet:
+      enable-all: true
+    lll:
+      line-length: 140
+    misspell:
+      locale: UK
+    nolintlint:
+      require-explanation: true
+      require-specific: false
+      allow-unused: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/abrosimov/go-provider
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

@@ -3,6 +3,7 @@ package provider
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/rs/zerolog"
 )
@@ -17,8 +18,8 @@ var (
 
 type Config struct {
 	// MailboxOutQueueCap is the maximum number of changes that should be kept.
-	// Roughly speaking this option required only during unit tests. In the normal
-	// life out queue cap is 1 which is enough.
+	// Roughly speaking, this option is required only during unit tests. In the normal
+	// life out queue cap is 1, which is enough.
 	Logger             Logger
 	MailboxOutQueueCap uint
 }
@@ -59,9 +60,8 @@ func GetProvidedTypes() []string {
 
 	typeNames := make([]string, 0)
 	// TODO: нахуя? Мы просто отдельный список ведём и всё
-	defaultRegistry.Load().providers.Range(func(key, value any) bool {
-		v := value.(valueProvider) //nolint:errcheck // it's guaranteed that all values in this map comply with `valueProvider`.
-		typeNames = append(typeNames, v.myUnderlyingTypeIs())
+	defaultRegistry.Load().providers.Range(func(key reflect.Type, value valueProvider) bool {
+		typeNames = append(typeNames, value.myUnderlyingTypeIs())
 		return true
 	})
 
@@ -129,7 +129,12 @@ func ValueOf[T any]() (*T, error) {
 		return nil, fmt.Errorf("%w %q", ErrNoProviderForType, key)
 	}
 
-	return v.(*provider[T]).value()
+	pr, ok := v.(*provider[T])
+	if !ok {
+		return nil, fmt.Errorf("%w %q", ErrNoProviderForType, key)
+	}
+
+	return pr.value()
 }
 
 type copier[T any] interface {
