@@ -27,7 +27,7 @@ func init() {
 	defaultRegistry.Store(&Registry{
 		name:                "default",
 		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
-		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, any](),
+		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, multiValueProviderBase](),
 		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
 		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
 	})
@@ -45,9 +45,15 @@ type valueProvider interface {
 	myUnderlyingTypeIs() string
 }
 
-type multipleValueProvider[T any] interface {
+// multiValueProviderBase is the non-generic interface that all multi-value providers implement.
+// It provides type-erased access to common operations.
+type multiValueProviderBase interface {
 	iAmMultiValueProviderOf() reflect.Type
 	myUnderlyingTypeIs() string
+}
+
+type multipleValueProvider[T any] interface {
+	multiValueProviderBase
 	merge(mvp2 *multiValueProvider[T]) error
 }
 
@@ -57,7 +63,7 @@ type Registry struct {
 	// TODO: very naive approach, need to benchmark on it's performance
 	// 	map[reflect.Type]valueProvider might be more efficient?
 	providers           typesx.TypedSyncMap[reflect.Type, valueProvider]
-	multiValueProviders typesx.TypedSyncMap[reflect.Type, any]
+	multiValueProviders typesx.TypedSyncMap[reflect.Type, multiValueProviderBase]
 	registeredTypes     typesx.TypedSyncMap[reflect.Type, providerType]
 	mailboxes           typesx.TypedSyncMap[string, *Mailbox]
 	// providedTypes       []string
@@ -71,7 +77,7 @@ func NewRegistry(name string) *Registry {
 	return &Registry{
 		name:                name,
 		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
-		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, any](),
+		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, multiValueProviderBase](),
 		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
 		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
 	}
@@ -92,7 +98,7 @@ func ResetRegistry() error {
 	defaultRegistry.Store(&Registry{
 		name:                "default",
 		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
-		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, any](),
+		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, multiValueProviderBase](),
 		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
 		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
 	})

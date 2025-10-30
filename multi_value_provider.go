@@ -84,15 +84,11 @@ func (mvp *multiValueProvider[T]) value(name string) (*T, error) {
 }
 
 // iamMultiValueProviderOf returns the reflect.Type of multiValueProvider[T].
-//
-//nolint:unused // idk why linter thinks that this function is unused
 func (mvp *multiValueProvider[T]) iAmMultiValueProviderOf() reflect.Type {
 	return getType[T]()
 }
 
 // myUnderlyingTypeIs returns the string representation of the name of the underlying type of multiValueProvider[T].
-//
-//nolint:unused // idk why linter thinks that this function is unused
 func (mvp *multiValueProvider[T]) myUnderlyingTypeIs() string {
 	return GetTypeName[T]()
 }
