@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
-	"sync/atomic"
 
 	"github.com/abrosimov/go-devtools/typesx"
 )
@@ -19,18 +18,18 @@ var (
 )
 
 var (
-	defaultRegistry    = atomic.Pointer[Registry]{}
-	defaultRegistryMtx = sync.Mutex{}
+	defaultRegistry    *Registry
+	defaultRegistryMtx sync.Mutex
 )
 
 func init() {
-	defaultRegistry.Store(&Registry{
+	defaultRegistry = &Registry{
 		name:                "default",
 		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
 		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, multiValueProviderBase](),
 		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
-		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
-	})
+		mailboxes:           typesx.NewTypedSyncMap[string, *mailbox](),
+	}
 }
 
 type providerType string
@@ -65,7 +64,7 @@ type Registry struct {
 	providers           typesx.TypedSyncMap[reflect.Type, valueProvider]
 	multiValueProviders typesx.TypedSyncMap[reflect.Type, multiValueProviderBase]
 	registeredTypes     typesx.TypedSyncMap[reflect.Type, providerType]
-	mailboxes           typesx.TypedSyncMap[string, *Mailbox]
+	mailboxes           typesx.TypedSyncMap[string, *mailbox]
 	// providedTypes       []string
 }
 
@@ -79,11 +78,20 @@ func NewRegistry(name string) *Registry {
 		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
 		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, multiValueProviderBase](),
 		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
-		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
+		mailboxes:           typesx.NewTypedSyncMap[string, *mailbox](),
 	}
 }
 
 func (r *Registry) destroy() {
+	// Destroy all mailboxes to stop their goroutines before clearing
+	r.mailboxes.Range(func(key string, mbox *mailbox) bool {
+		if err := mbox.destroy(); err != nil {
+			// Log but continue - we want to destroy all mailboxes
+			logger.Warnf("error destroying mailbox %q: %v", key, err)
+		}
+		return true
+	})
+
 	r.providers.Clear()
 	r.mailboxes.Clear()
 	r.registeredTypes.Clear()
@@ -94,14 +102,14 @@ func (r *Registry) destroy() {
 // In most cases, this function should be called in a test setup function.
 func ResetRegistry() error {
 	defaultRegistryMtx.Lock()
-	oldRegistry := defaultRegistry.Load()
-	defaultRegistry.Store(&Registry{
+	oldRegistry := defaultRegistry
+	defaultRegistry = &Registry{
 		name:                "default",
 		providers:           typesx.NewTypedSyncMap[reflect.Type, valueProvider](),
 		multiValueProviders: typesx.NewTypedSyncMap[reflect.Type, multiValueProviderBase](),
 		registeredTypes:     typesx.NewTypedSyncMap[reflect.Type, providerType](),
-		mailboxes:           typesx.NewTypedSyncMap[string, *Mailbox](),
-	})
+		mailboxes:           typesx.NewTypedSyncMap[string, *mailbox](),
+	}
 	defaultRegistryMtx.Unlock()
 
 	oldRegistry.destroy()
@@ -113,12 +121,12 @@ func addProviderToRegistry(provider valueProvider) error {
 	defaultRegistryMtx.Lock()
 	defer defaultRegistryMtx.Unlock()
 
-	providerTypeVal, loaded := defaultRegistry.Load().registeredTypes.LoadOrStore(provider.iAmProviderOf(), providerTypeSingleValue)
+	providerTypeVal, loaded := defaultRegistry.registeredTypes.LoadOrStore(provider.iAmProviderOf(), providerTypeSingleValue)
 	if loaded && providerTypeVal != providerTypeSingleValue {
 		return fmt.Errorf("%s %w via %s", provider.myUnderlyingTypeIs(), ErrTypeIsAlreadyProvided, providerTypeVal)
 	}
 
-	_, loaded = defaultRegistry.Load().providers.LoadOrStore(
+	_, loaded = defaultRegistry.providers.LoadOrStore(
 		provider.iAmProviderOf(),
 		provider,
 	)
@@ -129,12 +137,12 @@ func addProviderToRegistry(provider valueProvider) error {
 	return nil
 }
 
-func getMailboxForType[T any]() *Mailbox {
+func getMailboxForType[T any]() *mailbox {
 	defaultRegistryMtx.Lock()
 	defer defaultRegistryMtx.Unlock()
 
-	mbox := NewMailbox(GetTypeName[T]())
-	v, _ := defaultRegistry.Load().mailboxes.LoadOrStore(
+	mbox := newMailbox(GetTypeName[T]())
+	v, _ := defaultRegistry.mailboxes.LoadOrStore(
 		mbox.name,
 		mbox,
 	)
@@ -142,12 +150,12 @@ func getMailboxForType[T any]() *Mailbox {
 	return v
 }
 
-func getMailboxForNamedValueOfType[T any](name string) *Mailbox {
+func getMailboxForNamedValueOfType[T any](name string) *mailbox {
 	defaultRegistryMtx.Lock()
 	defer defaultRegistryMtx.Unlock()
 
-	mbox := NewMailbox(fmt.Sprintf("%s@%s", GetTypeName[T](), name))
-	v, _ := defaultRegistry.Load().mailboxes.LoadOrStore(
+	mbox := newMailbox(fmt.Sprintf("%s@%s", GetTypeName[T](), name))
+	v, _ := defaultRegistry.mailboxes.LoadOrStore(
 		mbox.name,
 		mbox,
 	)
@@ -159,12 +167,12 @@ func addMultiValueProviderToRegistry[T any](provider multipleValueProvider[T]) e
 	defaultRegistryMtx.Lock()
 	defer defaultRegistryMtx.Unlock()
 
-	providerTypeVal, loaded := defaultRegistry.Load().registeredTypes.LoadOrStore(provider.iAmMultiValueProviderOf(), providerTypeMultiValue)
+	providerTypeVal, loaded := defaultRegistry.registeredTypes.LoadOrStore(provider.iAmMultiValueProviderOf(), providerTypeMultiValue)
 	if loaded && providerTypeVal != providerTypeMultiValue {
 		return fmt.Errorf("%s %w via %s", provider.myUnderlyingTypeIs(), ErrTypeIsAlreadyProvided, providerTypeVal)
 	}
 
-	mvpRaw, loaded := defaultRegistry.Load().multiValueProviders.LoadOrStore(
+	mvpRaw, loaded := defaultRegistry.multiValueProviders.LoadOrStore(
 		provider.iAmMultiValueProviderOf(),
 		provider,
 	)

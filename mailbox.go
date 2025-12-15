@@ -11,7 +11,7 @@ var (
 	ErrAttemptToSendToInvalidMailbox = errors.New("attempt to send to invalid mailbox")
 )
 
-type Mailbox struct {
+type mailbox struct {
 	logger      Logger
 	queueIn     chan struct{}
 	name        string
@@ -21,8 +21,8 @@ type Mailbox struct {
 	hasChanged  atomic.Bool
 }
 
-func NewMailbox(name string) *Mailbox {
-	m := &Mailbox{
+func newMailbox(name string) *mailbox {
+	m := &mailbox{
 		name:     name,
 		queueIn:  make(chan struct{}),
 		queueOut: make([]*Subscription, 0, outBoxCap),
@@ -34,14 +34,14 @@ func NewMailbox(name string) *Mailbox {
 	return m
 }
 
-func (m *Mailbox) Len() int {
+func (m *mailbox) Len() int {
 	m.queueOutMtx.Lock()
 	defer m.queueOutMtx.Unlock()
 
 	return len(m.queueOut)
 }
 
-func (m *Mailbox) GetSubscription() *Subscription {
+func (m *mailbox) GetSubscription() *Subscription {
 	m.queueOutMtx.Lock()
 	defer m.queueOutMtx.Unlock()
 
@@ -58,7 +58,7 @@ func (m *Mailbox) GetSubscription() *Subscription {
 	return s
 }
 
-func (m *Mailbox) Unsubscribe(s *Subscription) {
+func (m *mailbox) Unsubscribe(s *Subscription) {
 	m.queueOutMtx.Lock()
 	defer m.queueOutMtx.Unlock()
 
@@ -71,7 +71,7 @@ func (m *Mailbox) Unsubscribe(s *Subscription) {
 	}
 }
 
-func (m *Mailbox) destroy() error {
+func (m *mailbox) destroy() error {
 	if !m.isValid.CompareAndSwap(true, false) {
 		m.logger.Warnf("attempt to destroy already destroyed mailbox")
 		return ErrDoubleDestroy
@@ -91,11 +91,11 @@ func (m *Mailbox) destroy() error {
 	return nil
 }
 
-func (m *Mailbox) IsValid() bool {
+func (m *mailbox) IsValid() bool {
 	return m.isValid.Load()
 }
 
-func (m *Mailbox) send() error {
+func (m *mailbox) send() error {
 	if !m.IsValid() {
 		return ErrAttemptToSendToInvalidMailbox
 	}
@@ -105,13 +105,13 @@ func (m *Mailbox) send() error {
 	return nil
 }
 
-func (m *Mailbox) mainLoop() {
+func (m *mailbox) mainLoop() {
 	for range m.queueIn {
 		m.broadcastChanges()
 	}
 }
 
-func (m *Mailbox) broadcastChanges() {
+func (m *mailbox) broadcastChanges() {
 	m.queueOutMtx.Lock()
 	defer m.queueOutMtx.Unlock()
 

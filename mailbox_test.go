@@ -7,17 +7,17 @@ import (
 )
 
 func (s *ProviderTestSuite) TestMailBox() {
-	mbox := provider.NewMailBox("test")
+	mbox := provider.NewMailboxForTest("test")
 
-	sub1 := mbox.GetSubscription()
-	s.Require().Equal(1, mbox.Len())
+	sub1 := mbox.GetSubscriptionForTest()
+	s.Require().Equal(1, mbox.LenForTest())
 	err := provider.SendMessageToMailbox(mbox)
 	s.Require().NoError(err)
 
 	assertChannelHasIncomingMessage(s, sub1.GetChannel())
 
-	sub2 := mbox.GetSubscription()
-	s.Require().Equal(2, mbox.Len())
+	sub2 := mbox.GetSubscriptionForTest()
+	s.Require().Equal(2, mbox.LenForTest())
 	err = provider.SendMessageToMailbox(mbox)
 	s.Require().NoError(err)
 
@@ -32,7 +32,7 @@ func (s *ProviderTestSuite) TestMailBox() {
 	err = provider.DestroyMailBox(mbox)
 	s.Require().NoError(err)
 
-	s.Require().Equal(0, mbox.Len())
+	s.Require().Equal(0, mbox.LenForTest())
 	_, isOpened := <-sub1.GetChannel()
 	s.Require().False(isOpened)
 	_, isOpened = <-sub2.GetChannel()
@@ -40,21 +40,21 @@ func (s *ProviderTestSuite) TestMailBox() {
 }
 
 func (s *ProviderTestSuite) TestSubscribeUnsubscribe() {
-	mbox := provider.NewMailBox("test")
+	mbox := provider.NewMailboxForTest("test")
 
-	sub1 := mbox.GetSubscription()
-	s.Require().Equal(1, mbox.Len())
-	mbox.Unsubscribe(sub1)
-	s.Require().Equal(0, mbox.Len())
+	sub1 := mbox.GetSubscriptionForTest()
+	s.Require().Equal(1, mbox.LenForTest())
+	mbox.UnsubscribeForTest(sub1)
+	s.Require().Equal(0, mbox.LenForTest())
 	_, isOpened := <-sub1.GetChannel()
 	s.Require().False(isOpened)
 
-	sub1 = mbox.GetSubscription()
-	s.Require().Equal(1, mbox.Len())
-	sub2 := mbox.GetSubscription()
-	s.Require().Equal(2, mbox.Len())
-	sub3 := mbox.GetSubscription()
-	s.Require().Equal(3, mbox.Len())
+	sub1 = mbox.GetSubscriptionForTest()
+	s.Require().Equal(1, mbox.LenForTest())
+	sub2 := mbox.GetSubscriptionForTest()
+	s.Require().Equal(2, mbox.LenForTest())
+	sub3 := mbox.GetSubscriptionForTest()
+	s.Require().Equal(3, mbox.LenForTest())
 
 	err := provider.SendMessageToMailbox(mbox)
 	s.Require().NoError(err)
@@ -63,8 +63,8 @@ func (s *ProviderTestSuite) TestSubscribeUnsubscribe() {
 	assertChannelHasIncomingMessage(s, sub2.GetChannel())
 	assertChannelHasIncomingMessage(s, sub3.GetChannel())
 
-	mbox.Unsubscribe(sub2)
-	s.Require().Equal(2, mbox.Len())
+	mbox.UnsubscribeForTest(sub2)
+	s.Require().Equal(2, mbox.LenForTest())
 	_, isOpened = <-sub2.GetChannel()
 	s.Require().False(isOpened)
 }

@@ -12,6 +12,13 @@ type ProviderTestSuite struct {
 	suite.Suite
 }
 
+func (s *ProviderTestSuite) SetupSuite() {
+	// Init must be called once before any goroutines are created
+	provider.Init(provider.Config{
+		MailboxOutQueueCap: 10, // Higher buffer for tests
+	})
+}
+
 func (s *ProviderTestSuite) SetupTest() {
 	err := provider.ResetRegistry()
 	s.Require().NoError(err)
