@@ -6,14 +6,21 @@ linters:
   enable:
     - asasalint
     - asciicheck
+    - bidichk
     - bodyclose
+    - contextcheck
     - copyloopvar
     - dogsled
     - dupl
+    - durationcheck
+    - embeddedstructfieldcheck
     - err113
+    - errorlint
     - exhaustive
     - forbidigo
+    - funcorder
     - funlen
+    - gocheckcompilerdirectives
     - gocognit
     - goconst
     - gocritic
@@ -21,13 +28,23 @@ linters:
     - godot
     - goprintffuncname
     - gosec
+    - intrange
+    - ireturn
     - lll
+    - makezero
     - misspell
     - mnd
+    - modernize
+    - musttag
     - nakedret
+    - nilerr
+    - nilnil
     - noctx
     - nolintlint
+    - perfsprint
     - prealloc
+    - protogetter
+    - reassign
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
@@ -35,6 +52,7 @@ linters:
     - testpackage
     - unconvert
     - unparam
+    - usestdlibvars
     - whitespace
   settings:
     dupl:
@@ -42,15 +60,23 @@ linters:
     errcheck:
       disable-default-exclusions: true
       check-type-assertions: true
-      check-blank: false
+      check-blank: true
     exhaustive:
       default-signifies-exhaustive: false
+      default-case-required: true
+      check:
+        - switch
+        - map
     forbidigo:
+      analyze-types: true
       forbid:
-        - pattern: ^println.*$
-        - pattern: ^panic*$
-        - pattern: ^fmt\.Panicf.*$
-        - pattern: ^exec\.Command(# please use exec\.CommandContext instead)?$
+        - pattern: ^print(ln)?$
+        - pattern: ^panic$
+        - pattern: ^fmt\.Print.*$
+        - pattern: ^exec\.Command$
+          msg: use exec.CommandContext instead
+    funcorder:
+      struct-method: false
     funlen:
       lines: 50
       statements: 50
@@ -72,6 +98,12 @@ linters:
           sizeThreshold: 33
     gocyclo:
       min-complexity: 16
+    gosec:
+      severity: low
+      confidence: low
+      config:
+        G302: "0600"
+        G306: "0600"
     govet:
       enable-all: true
     lll:
@@ -80,15 +112,13 @@ linters:
       locale: UK
     nolintlint:
       require-explanation: true
-      require-specific: false
+      require-specific: true
       allow-unused: false
   exclusions:
     generated: lax
     presets:
       - comments
       - common-false-positives
-      - legacy
-      - std-error-handling
     paths:
       - third_party$
       - builtin$
@@ -98,7 +128,6 @@ issues:
   max-same-issues: 0
 formatters:
   enable:
-    - gofmt
     - goimports
   settings:
     goimports:
